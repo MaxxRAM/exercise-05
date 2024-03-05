@@ -1,0 +1,154 @@
+---
+title: "exercise 5"
+
+---
+Open Library
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+CHALLENGE 1
+
+Step 1
+```{r}
+f<- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/IMDB-movies.csv"
+d<- read_csv(f, col_names = T)
+```
+
+Step 2
+```{r}
+d<- d|> filter(startYear>= 1920 & startYear<= 1979 & runtimeMinutes>= 60 & runtimeMinutes<= 180) |> mutate(decade = case_when(startYear<1930 ~ "20s", startYear< 1940 ~ "30s", startYear<1950 ~ "40s", startYear<1960 ~ "50s", startYear<1970 ~ "60s", startYear<=1979 ~"70s"))
+# first filter removes all years outside of 1920-1979 and anything not between 60 and 180 minutes
+# second pipe mutates another column called decade that gives a decade label to each group of startyears
+```
+
+Step 3
+```{r}
+ggplot(data = d, mapping = aes(runtimeMinutes, color = paste(decade))) + geom_histogram(binwidth = 0.5) + facet_wrap(~d$decade)
+```
+Step 4
+```{r}
+
+results<- summarise(group_by(d,d$decade), dmean = mean(runtimeMinutes, na.rm = T), dsd= sd(runtimeMinutes, na.rm = T))
+results
+```
+
+Step 5
+```{r}
+samples <- d |> group_by(decade) |> sample_n(100, replace = FALSE) |> ungroup()
+samples
+samplestats<- summarise(group_by(samples, samples$decade), samplemean = mean(runtimeMinutes, na.rm = T), samplesd = sd(runtimeMinutes, na.rm = T))
+samplestats
+```
+
+Step 6
+```{r}
+n<- 100
+samplestats<- samplestats|> mutate(sampleSE = samplesd/sqrt(n))
+# standard deviation of sample/ sqrt(sample size)
+samplestats
+```
+
+Step 6.5
+```{r}
+names(samplestats)[names(samplestats) == "samples$decade"] <- "decade"
+names(results)[names(results) == "d$decade"] <- "decade"
+# ^ so I can join tables together for convenience
+fullstats<- (left_join(samplestats, results, by = "decade"))
+fullstats<- rename(fullstats, popmean = dmean)
+fullstats<- rename(fullstats, popsd = dsd)
+fullstats
+# again just to clean up the names for this table
+```
+
+Step 7
+```{r}
+fullstats<- fullstats |> mutate(popSE= popsd/sqrt(n))
+fullstats
+```
+
+Step 8
+```{r}
+reps<- 1000
+
+sampdist<- d|> group_by(decade) |> rep_sample_n(size = 100, replace = F, reps = 1000, prob = NULL) 
+
+sampdiststep8<- sampdist|> group_by(replicate, decade) |> summarise(samplemean = mean(runtimeMinutes, na.rm=T), samplesd = sd(runtimeMinutes, na.rm = T))
+sampdiststep8
+
+```
+
+
+Step 9
+```{r}
+sampdiststatsstep9<- summarise(group_by(sampdist, sampdist$decade), samplemean = mean(runtimeMinutes, na.rm = T), samplesd = sd(runtimeMinutes, na.rm = T))
+names(sampdiststatsstep9)[names(sampdiststatsstep9) == "sampdist$decade"] <- "decade"
+
+ggplot(data = sampdiststep8, mapping = aes(samplemean ,color = paste(decade))) + geom_histogram(binwidth = 0.5) + facet_wrap(~sampdiststep8$decade)
+```
+
+
+Step 10
+```{r}
+sampdiststatsstep9<- sampdiststatsstep9 |> mutate(SE= popsd/sqrt(n))
+```
+
+
+CHALLENGE 2
+
+Step 1
+```{r}
+f<- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/zombies.csv"
+z<- read_csv(f, col_names = T)
+library(radiant)
+
+```
+
+
+Step 2
+```{r}
+pmheight<- mean(z$height)
+pmweight<- mean(z$weight)
+pmage<- mean(z$age)
+pmkills<- mean(z$zombies_killed)
+pmYoEd<- mean(z$years_of_education)
+
+psdheight<- sdpop(z$height)
+psdweight<- sdpop(z$weight)
+psdage<- sdpop(z$age)
+psdkills<- sdpop(z$zombies_killed)
+psdYoEd<- sdpop(z$years_of_education)
+
+```
+
+
+Step 3
+```{r}
+hbox<- ggplot(data = z, aes(x = gender, y= height))
+hbox<- hbox + geom_boxplot(na.rm = T)
+wbox<- ggplot(data = z, aes(x = gender, y= weight))
+wbox<- wbox + geom_boxplot(na.rm = T)
+abox<- ggplot(data = z, aes(x = gender, y= age))
+abox<- abox + geom_boxplot(na.rm = T)
+kbox<- ggplot(data = z, aes(x = gender, y= zombies_killed))
+kbox<- kbox + geom_boxplot(na.rm = T)
+YEbox<- ggplot(data = z, aes(x = gender, y= years_of_education))
+YEbox<- YEbox + geom_boxplot(na.rm = T)
+```
+
+
+Step 4
+```{r}
+
+Heightagesplot<- ggplot(data = z, aes(x = age, height)) + geom_point(aes(color = factor(gender)), na.rm = T)
+
+Weightagesplot<- ggplot(data = z, aes(x = age, weight)) + geom_point(aes(color = factor(gender)), na.rm = T)
+```
+
+
+Step 5
+```{r}
+
+
+```
