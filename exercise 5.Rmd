@@ -6,6 +6,7 @@ Open Library
 ```{r}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(infer)
 ```
 
 CHALLENGE 1
@@ -91,7 +92,13 @@ ggplot(data = sampdiststep8, mapping = aes(samplemean ,color = paste(decade))) +
 
 Step 10
 ```{r}
-sampdiststatsstep9<- sampdiststatsstep9 |> mutate(SE= popsd/sqrt(n))
+#1
+mean(samplestats$sampleSE)
+#2
+mean(fullstats$popSE)
+#3
+mean(sampdiststatsstep9$samplesd) 
+#^ since multiple samples of the same pop were taken we can use the standard deviaiton of the entire distribution
 ```
 
 
@@ -101,8 +108,6 @@ Step 1
 ```{r}
 f<- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/zombies.csv"
 z<- read_csv(f, col_names = T)
-library(radiant)
-
 ```
 
 
@@ -144,11 +149,137 @@ Step 4
 Heightagesplot<- ggplot(data = z, aes(x = age, height)) + geom_point(aes(color = factor(gender)), na.rm = T)
 
 Weightagesplot<- ggplot(data = z, aes(x = age, weight)) + geom_point(aes(color = factor(gender)), na.rm = T)
+
+Heightagesplot + Weightagesplot
 ```
 
 
 Step 5
 ```{r}
+
+histogram(z$height)
+qqnorm(z$height)
+qqline(z$height)
+histogram(z$weight)
+qqnorm(z$weight)
+qqline(z$weight)
+histogram(z$zombies_killed)
+qqnorm(z$zombies_killed)
+qqline(z$zombies_killed)
+histogram(z$years_of_education)
+qqnorm(z$years_of_education)
+qqline(z$years_of_education)
+#height and weight appear to be normally distributed while zombies killed and years of education appear to not be normally distributed based on the qqnorm and qqlines
+```
+
+
+Step 6
+```{r}
+s<- sample_n(z, 50, replace = F)
+singlesample<- summarise(s,meanheight= mean(height), sdheight= sd(height),SEheight= sdheight/sqrt(50), meanweight = mean(weight), sdweight= sd(weight),SEweight= sdweight/sqrt(50), meankills= mean(zombies_killed), sdkills= sd(zombies_killed), SEkills= sdkills/sqrt(50), meanYoEd= mean(years_of_education), sdYoEd= sd(years_of_education), SEYoEd= sdYoEd/sqrt(50))
+
+singlesample
+t.test(s$weight, mu= 143.9, alternative = "two.sided")
+t.test(s$height, mu= mean(z$height), alternative = "two.sided")
+t.test(s$zombies_killed, mu= mean(z$zombies_killed), alternative = "two.sided")
+t.test(s$years_of_education, mu= mean(z$years_of_education), alternative = "two.sided")
+
+```
+
+Step 7 
+```{r}
+zampdist<- z |> rep_sample_n(size = 50, replace = F, reps = 199)
+zampdiststats<- zampdist|> summarise(meanheight= mean(height), sdheight= sd(height),SEheight= sdheight/sqrt(50), meanweight = mean(weight), sdweight= sd(weight),SEweight= sdweight/sqrt(50), meankills= mean(zombies_killed), sdkills= sd(zombies_killed), SEkills= sdkills/sqrt(50), meanYoEd= mean(years_of_education), sdYoEd= sd(years_of_education), SEYoEd= sdYoEd/sqrt(50))
+
+zampdiststatsMH<- mean(zampdist$height)
+zampdiststatsMW<- mean(zampdist$weight)
+zampdiststatsMK<- mean(zampdist$zombies_killed)
+zampdiststatsMY<- mean(zampdist$years_of_education)
+zampdiststatsSDH<- sd(zampdist$height)
+zampdiststatsSDW<- sd(zampdist$weight)
+zampdiststatsSDK<- sd(zampdist$zombies_killed)
+zampdiststatssdY<- sd(zampdist$years_of_education)
+
+```
+
+
+Step 8
+```{r}
+histogram(zampdiststats$meanheight)
+histogram(zampdiststats$meanweight)
+histogram(zampdiststats$meankills)
+histogram(zampdiststats$meanYoEd)
+qqnorm(zampdiststats$meanYoEd)
+
+# the sampling distributions appear normally distributed even in those that were not originally normally distributed
+```
+
+
+Step 9
+```{r}
+
+mhlower<- quantile(zampdiststats$meanheight, 0.025)
+mhupper<- quantile(zampdiststats$meanheight, 0.975)
+mh_ci<- c(mhlower, mhupper)
+mh_ci
+
+mwlower<- quantile(zampdiststats$meanweight, 0.025)
+mwupper<- quantile(zampdiststats$meanweight, 0.975)
+mw_ci<- c(mwlower, mwupper)
+mw_ci
+
+mklower<- quantile(zampdiststats$meankills, 0.025)
+mkupper<- quantile(zampdiststats$meankills, 0.975)
+mk_ci<- c(mklower, mkupper)
+mk_ci
+
+mYlower<- quantile(zampdiststats$meanYoEd, 0.025)
+mYupper<- quantile(zampdiststats$meanYoEd, 0.975)
+mY_ci<- c(mYlower, mYupper)
+mY_ci
+```
+
+
+Step 10
+```{r}
+#height
+n_boot=1000
+hboot<- vector(length = n_boot)
+n<- length(s) 
+for (i in 1:n_boot) {
+  hboot[[i]] <- mean(sample(s$height, n, replace = T))
+} 
+hbootlower<- quantile(hboot, 0.025)
+hbootupper<- quantile(hboot, 0.975)
+Hci_boot<- c(hbootlower, hbootupper)
+
+#weight
+wboot<- vector(length = n_boot)
+for (i in 1:n_boot) {
+  wboot[[i]] <- mean(sample(s$weight, n, replace = T))
+} 
+wbootlower<- quantile(wboot, 0.025)
+wbootupper<- quantile(wboot, 0.975)
+wci_boot<- c(wbootlower, wbootupper)
+
+#zombies killed
+kboot<- vector(length = n_boot)
+for (i in 1:n_boot) {
+  kboot[[i]] <- mean(sample(s$zombies_killed, n, replace = T))
+} 
+kbootlower<- quantile(kboot, 0.025)
+kbootupper<- quantile(kboot, 0.975)
+kci_boot<- c(kbootlower, kbootupper)
+
+#years of education
+Yboot<- vector(length = n_boot)
+for (i in 1:n_boot) {
+  Yboot[[i]] <- mean(sample(s$years_of_education, n, replace = T))
+} 
+Ybootlower<- quantile(Yboot, 0.025)
+Ybootupper<- quantile(Yboot, 0.975)
+Yci_boot<- c(Ybootlower, Ybootupper)
+
 
 
 ```
